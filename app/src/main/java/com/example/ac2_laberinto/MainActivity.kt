@@ -29,14 +29,80 @@ import androidx.compose.ui.layout.onSizeChanged
 import com.example.ac2_laberinto.ui.theme.AC2LaberintoTheme
 import kotlinx.coroutines.delay
 import kotlin.math.abs
-import androidx.compose.foundation.layout.Box
-
-
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 class Circle(val x: Float, val y: Float, val r: Float)
 
 class Rectangle(val x: Float, val y: Float, val w: Float, val h: Float)
 
+@Composable
+fun AppNavigation(modifier: Modifier, x: Float, y: Float) {
+    val navController = rememberNavController()
 
+    NavHost(
+        navController = navController,
+        startDestination = "menu",
+        modifier = modifier
+    ) {
+        composable("menu") {
+            MenuScreen(onPlay = { navController.navigate("game") })
+        }
+        composable("game")
+        {
+            SimpleGame(
+                modifier = Modifier.fillMaxSize(),
+                x = x,
+                y = y,
+
+                onWin = {
+                    navController.navigate("win") { popUpTo("menu") }
+                }
+            )
+        }
+        composable("win")
+        {
+            WinScreen(
+                onRetry = { navController.navigate("game") { popUpTo("menu") } },
+                onMenu = { navController.popBackStack("menu", inclusive = false) }
+            )
+        }
+    }
+}
+
+@Composable
+fun MenuScreen(onPlay: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("LABERINTO", fontSize = 40.sp)
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = onPlay) { Text("Play") }
+    }
+}
+
+@Composable
+fun WinScreen(onRetry: () -> Unit, onMenu: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Has ganado!! SIUUU", fontSize = 36.sp)
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = onRetry) { Text("Jugar otra vez") }
+        Spacer(Modifier.height(12.dp))
+        Button(onClick = onMenu) { Text("Menú") }
+    }
+}
 class MainActivity : ComponentActivity(), SensorEventListener {
 
     private lateinit var sensorManager: SensorManager
@@ -55,35 +121,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         enableEdgeToEdge()
         setContent {
-            var currentScreen by remember { mutableStateOf("title") }
-
             AC2LaberintoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                    ) {
-                        when (currentScreen) {
-
-                            "title" -> TitleScreen(
-                                onStart = { currentScreen = "game" },
-                                onExit = { this@MainActivity.finish() }
-                            )
-
-                            "game" -> SimpleGame(
-                                modifier = Modifier.fillMaxSize(),
-                                x = x,
-                                y = y,
-                                onWin = { currentScreen = "victory" }
-                            )
-
-                            "victory" -> VictoryScreen(
-                                onBackToMenu = { currentScreen = "title" }
-                            )
-                        }
-                    }
+                    AppNavigation(Modifier.padding(innerPadding), x, y)
                 }
             }
         }
@@ -132,6 +172,7 @@ fun SimpleGame(modifier: Modifier, x: Float, y: Float, onWin: () -> Unit ) {
     var circleY by remember { mutableFloatStateOf(0f) }
     var started by remember { mutableStateOf(false) }
     var win by remember { mutableStateOf(false) }
+    val currentOnWin by rememberUpdatedState(onWin)
 
     // Para que el bucle vea siempre el último valor del sensor
     val currentX by rememberUpdatedState(x)
@@ -191,15 +232,20 @@ fun SimpleGame(modifier: Modifier, x: Float, y: Float, onWin: () -> Unit ) {
             val circuloActual = Circle(circleX, circleY, radius)
             for (i in grid.indices) {
                 for (j in grid[i].indices) {
-                    if (grid[i][j] == 2) {
+                    if (grid[i][j] == 2)
+                    {
                         val meta = Rectangle(offX + j * cell, offY + i * cell, cell, cell)
+
                         if (intersects(circuloActual, meta)) {
                             win = true
-                            onWin()
+                            currentOnWin()
                         }
                     }
                 }
             }
+
+
+
         }
     }
 
@@ -250,3 +296,5 @@ fun intersects(circle: Circle, rect: Rectangle): Boolean {
     val dy = distY - halfH
     return dx * dx + dy * dy <= circle.r * circle.r
 }
+
+

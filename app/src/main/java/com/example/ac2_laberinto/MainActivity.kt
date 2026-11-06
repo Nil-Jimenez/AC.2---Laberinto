@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import com.example.ac2_laberinto.ui.theme.AC2LaberintoTheme
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import androidx.compose.foundation.layout.Box
 
 
 class Circle(val x: Float, val y: Float, val r: Float)
@@ -54,9 +55,35 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         enableEdgeToEdge()
         setContent {
+            var currentScreen by remember { mutableStateOf("title") }
+
             AC2LaberintoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    SimpleGame(modifier = Modifier.padding(innerPadding), x, y)
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        when (currentScreen) {
+
+                            "title" -> TitleScreen(
+                                onStart = { currentScreen = "game" },
+                                onExit = { this@MainActivity.finish() }
+                            )
+
+                            "game" -> SimpleGame(
+                                modifier = Modifier.fillMaxSize(),
+                                x = x,
+                                y = y,
+                                onWin = { currentScreen = "victory" }
+                            )
+
+                            "victory" -> VictoryScreen(
+                                onBackToMenu = { currentScreen = "title" }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -72,7 +99,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
 
 @Composable
-fun SimpleGame(modifier: Modifier, x: Float, y: Float) {
+fun SimpleGame(modifier: Modifier, x: Float, y: Float, onWin: () -> Unit ) {
 
     // 1 = pared, 0 = camino, 2 = meta
     val grid = arrayOf(
@@ -168,7 +195,7 @@ fun SimpleGame(modifier: Modifier, x: Float, y: Float) {
                         val meta = Rectangle(offX + j * cell, offY + i * cell, cell, cell)
                         if (intersects(circuloActual, meta)) {
                             win = true
-                            Log.d("Collision", "lo has completado nigger")
+                            onWin()
                         }
                     }
                 }
